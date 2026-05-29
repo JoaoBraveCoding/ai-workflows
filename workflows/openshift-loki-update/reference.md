@@ -158,4 +158,11 @@ Verify `build_root.tag`, `base_images`, and `releases.latest` against the curren
 | openshift/loki | `upstream-v{VERSION}` | `upstream-v3.7.2` |
 | JoaoBraveCoding/loki (fork) | `upstream-v{VERSION}` | `upstream-v3.7.2` |
 | grafana/loki (source) | tag `v{VERSION}` | `v3.7.2` |
-| openshift/release PR branch | `loki-upstream-v{VERSION}` | `loki-upstream-v3.7.2` |
+| JoaoBraveCoding/release (fork) | `loki-upstream-v{VERSION}` | `loki-upstream-v3.7.2` |
+
+Agent pushes to the fork branches above. The user opens PRs manually — do not run `gh pr create`.
+
+```bash
+# Check if release branch already pushed to fork
+gh api repos/JoaoBraveCoding/release/branches/loki-upstream-v{TARGET_VERSION} 2>/dev/null && echo "exists" || echo "missing"
+```

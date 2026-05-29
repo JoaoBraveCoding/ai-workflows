@@ -1,8 +1,13 @@
 # OpenShift Loki Image Update Workflow
 
-Prepare a Loki image update for OpenShift by syncing upstream Grafana releases into the fork, waiting for the openshift/loki branch, then opening openshift/release CI changes.
+Prepare a Loki image update for OpenShift by syncing upstream Grafana releases into the fork, waiting for the openshift/loki branch, then pushing openshift/release CI changes to a branch.
 
 This workflow is resumable. On each run, determine the current phase and continue from there.
+
+## Agent constraints
+
+- **Push branches only.** Do not open pull requests — the user opens PRs manually.
+- After pushing, report the branch URL and stop. Optionally include a suggested PR title and summary for the user.
 
 ## Constants
 
@@ -11,6 +16,7 @@ This workflow is resumable. On each run, determine the current phase and continu
 | Upstream Loki | https://github.com/grafana/loki |
 | OpenShift Loki | https://github.com/openshift/loki |
 | Fork Loki | https://github.com/JoaoBraveCoding/loki |
+| Fork Release | https://github.com/JoaoBraveCoding/release |
 | OpenShift Release | https://github.com/openshift/release |
 | Reference PR | https://github.com/openshift/release/pull/74481 |
 | Reference branch commits | https://github.com/openshift/loki/commits/upstream-v3.6.5/ |
@@ -124,9 +130,9 @@ Or check https://github.com/openshift/loki/branches for `upstream-v{TARGET_VERSI
 - If branch **does not exist**: **exit** — still waiting
 - If branch **exists**: continue to Phase 3
 
-## Phase 3: Open openshift/release PR
+## Phase 3: Push openshift/release branch
 
-Skip if a PR for `upstream-v{TARGET_VERSION}` CI already exists.
+Skip if branch `loki-upstream-v{TARGET_VERSION}` already exists on the fork with the CI and mirroring changes.
 
 ### 3.1 Clone openshift/release
 
@@ -189,7 +195,7 @@ Example pattern from PR #74481 (3.5.7 → 3.6.5):
 
 Apply the same pattern using `OCP_LOKI_VERSION` and `TARGET_VERSION`.
 
-### 3.3 Commit and open PR
+### 3.3 Commit and push branch
 
 ```bash
 git add ci-operator/config/openshift/loki/openshift-loki-upstream-v{TARGET_VERSION}.yaml
@@ -199,21 +205,24 @@ git add core-services/image-mirroring/openshift-logging/mapping_logging_loki_qua
 
 git commit -m "openshift/loki: add CI for upstream-v{TARGET_VERSION}"
 git push -u origin loki-upstream-v{TARGET_VERSION}
-gh pr create --repo openshift/release --title "openshift/loki: add CI for upstream-v{TARGET_VERSION}" --body "$(cat <<'EOF'
-## Summary
-- Add ci-operator config and presubmit/postsubmit jobs for openshift/loki `upstream-v{TARGET_VERSION}`
-- Update image mirroring to promote `v{TARGET_VERSION}` as latest
-- Templated from upstream-v{OCP_LOKI_VERSION} files; pattern reference: https://github.com/openshift/release/pull/74481
-
-## Test plan
-- [ ] CI jobs generate correctly
-- [ ] `/test all` on openshift/loki PR once branch is active
-
-EOF
-)"
 ```
 
-Report the PR URL and **stop**. Future workflow steps will be added later.
+Do **not** run `gh pr create` or open a PR. Report status and **stop**:
+
+```
+Phase 3 complete.
+- Branch pushed: https://github.com/JoaoBraveCoding/release/tree/loki-upstream-v{TARGET_VERSION}
+- User action: open PR against openshift/release master
+
+Suggested PR title: openshift/loki: add CI for upstream-v{TARGET_VERSION}
+
+Suggested PR summary:
+- Add ci-operator config and presubmit/postsubmit jobs for openshift/loki upstream-v{TARGET_VERSION}
+- Update image mirroring to promote v{TARGET_VERSION} as latest
+- Templated from upstream-v{OCP_LOKI_VERSION} files; pattern reference: https://github.com/openshift/release/pull/74481
+```
+
+Future workflow steps will be added later.
 
 ## Phase detection (start of every run)
 
@@ -222,8 +231,8 @@ Report the PR URL and **stop**. Future workflow steps will be added later.
 2. If no update needed → EXIT
 3. If fork branch missing/incomplete → Phase 1
 4. If fork pushed but openshift branch missing → Phase 2 (EXIT, wait)
-5. If openshift branch exists and no release PR → Phase 3
-6. If release PR exists → report status, EXIT
+5. If openshift branch exists and release branch not pushed → Phase 3
+6. If release branch pushed → report status, EXIT (user opens PR)
 ```
 
 ## Progress checklist
@@ -242,7 +251,8 @@ Task Progress:
 - [ ] Phase 2: openshift/loki upstream-v{TARGET} branch exists
 - [ ] Phase 3: CI config templated (3 new files)
 - [ ] Phase 3: Image mirroring updated
-- [ ] Phase 3: openshift/release PR opened
+- [ ] Phase 3: openshift/release branch pushed
+- [ ] User: PR opened against openshift/release
 ```
 
 ## Additional resources
